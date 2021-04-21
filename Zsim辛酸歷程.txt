@@ -1,0 +1,203 @@
+#USE LINUX 16.04 (packages required) Alps(required by memcached and vacation) only good on 16.04 I don't know why??????????
+I guess is the boost's version an cmake version problem
+
+
+
+https://github.com/gwiseki/2018-Intern/blob/master/README.md
+sudo apt-get install build-essential
+sudo apt-get install vim
+sudo apt-get install libelf-dev
+sudo apt-get install libconfig-dev
+sudo apt-get install libhdf5-dev
+sudo apt-get install libconfig++-dev
+sudo apt-get install automake
+sudo apt-get install libtool
+sudo apt-get install libevent-dev 
+sudo apt-get install libboost-all-dev
+sudo apt-get install -y glibc-doc
+sudo apt-get install libglib2.0-dev 
+
+
+#whisper compile with gcc 4.8
+
+#intel pin 2.14 use gcc 4.8   
+# download: https://drive.google.com/file/d/0BwfK93g2BHz7d2RLWF9xTncwNUE/view 
+
+//switch Gcc version
+sudo apt install gcc-4.8 gcc-4.8-multilib
+sudo apt install g++-4.8 g++-4.8-multilib
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.3 10
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.3 10
+
+
+
+#whisper : memcached :: alps use g++ 6 to build 
+#whisper : vacation :: g++ & gcc 6 to scons build 
+#whisper : memcached :: 
+*****IMPORTANT****
+mnemosyne-gcc/usermode/library/mtm/include/tm_def.h :#if (__GLIBC__ == 2 && __GLIBC_MINOR__ > 19) -> #if (__GLIBC__ == 2 && __GLIBC_MINOR__ > 23)
+
+
+
+
+#whisper problem
+
+https://github.com/gwiseki/2018-Intern/blob/master/README.md
+https://github.com/snalli/mnemosyne-gcc/issues/4
+
+!!! mnes build in gcc 4.8
+
+
+
+!!! ctree and hashmap require sudo apt-get install libglib2.0-dev 
+
+
+
+https://github.com/gwiseki/2018-Intern/blob/master/README.md
+
+
+segments_dir="/dev/shm/psegments"
+
+
+
+###############################################################################
+##############################Pin##############################################
+###############################################################################
+
+
+cd pin-2.14-71313-gcc.4.4.7-linux/source/tools/ManualExamples
+make all TARGET=intel64
+pin-3.../pin.sh -t -ifeellucky .. pin-3....../source/tools/ManualExamples/obj.../pinatrace.so --"/execute"
+
+
+2021/4/ I use pin-3.8 now 
+
+
+
+################################################################################
+###########################Gem5 build ##########################################
+################################################################################
+Version :https://github.com/gem5/gem5/releases/tag/v19.0.0.0 (can build on scons 2.4)
+scons build/X86/gem5.opt -jx CPU_MODELS=AtomicSimpleCPU,TimingSimpleCPU,O3CPU,MinorCPU( x = cpucore +1)
+
+
+#zsim must use gcc 5.4 the last number is priority
+
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 20
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 20
+
+#in zsim/build/opt/pin_cmd.cpp must be modified
+
+vim build/opt/pin_cmd.cpp
+
+//Global pin options
+    args.push_back("-follow_execv"); //instrument child processes
+    args.push_back("-tool_exit_timeout"); //don't wait much of internal threads
+    args.push_back("1");
+    args.push_back("-ifeellucky"); // add this line 
+
+
+
+vim tests/simple.cfg 
+#cant use ls change to pwd or your own task
+
+process0 = {
+
+    command = "pwd";
+   // command = "ls -alh --color tests/";
+};
+
+
+#in zsim directory
+./build/opt/zsim tests/simple.cfg
+
+#terminal result:
+ting-yi@tingyi-MacBookPro:~/tool/zsim$ ./build/opt/zsim tests/simple.cfg 
+[H] Starting zsim, built Sun Oct 18 18:43:07 CDT 2020 (rev master:113:2aea90e:2fc 4+ 1- 478e36ef)
+[H] Creating global segment, 1024 MBs
+[H] Global segment shmid = 5701645
+[H] Deadlock detection ON
+[S 1] Started instance
+[S 0] Started instance
+[S 0] Started RR scheduler, quantum=50 phases
+[S 0] Initialized system
+[S 0] HDF5 backend: Opening /home/ting-yi/tool/zsim/zsim.h5
+[S 0] HDF5 backend: Created table, 22624 bytes/record, 47 records/write
+[S 0] HDF5 backend: Opening /home/ting-yi/tool/zsim/zsim-ev.h5
+[S 0] HDF5 backend: Created table, 22624 bytes/record, 6 records/write
+[S 0] HDF5 backend: Opening /home/ting-yi/tool/zsim/zsim-cmp.h5
+[S 0] HDF5 backend: Created table, 2464 bytes/record, 1 records/write
+[S 0] Initialization complete
+[S 0] Started process, PID 13418
+[S 0] procMask: 0x0
+[S 0] [0] Adjusting clocks, domain 0, de-ffwd 0
+[S 0] vDSO info initialized
+[H] Attached to global heap
+[S 1] Started process, PID 13419
+[S 1] procMask: 0x400000000000000
+[S 1] vDSO info initialized
+[S 0] Thread 0 starting
+[S 0] Started contention simulation thread 0
+[S 0] Started scheduler watchdog thread
+[S 0] FF control Thread TID 13426
+[S 1] Thread 0 starting
+[S 1] FF control Thread TID 13427
+[S 0] Time slice ended, context-switched 1 threads, runQueue size 0, available 0
+[S 0]  State:   0r
+[S 1] Time slice ended, context-switched 1 threads, runQueue size 0, available 0
+[S 1]  State:  65536r
+/home/ting-yi/tool/zsim
+// As simple as it gets: 1-core system with 2 short processes
+
+sys = {
+    cores = {
+        simpleCore = {
+            type = "Simple";
+            dcache = "l1d";
+            icache = "l1i";
+        };
+    };
+
+    lineSize = 64;
+
+    caches = {
+        l1d = {
+            size = 65536;
+        };
+        l1i = {
+            size = 32768;
+        };
+        l2 = {
+            caches = 1;
+            size = 2097152;
+            children = "l1i|l1d";  // interleave
+        };
+    };
+};
+
+sim = {
+    phaseLength = 10000;
+    // attachDebugger = True;
+    schedQuantum = 50;  // switch threads frequently
+    procStatsFilter = "l1.*|l2.*";
+};
+
+process0 = {
+
+    command = "pwd";
+   // command = "ls -alh --color tests/";
+};
+
+
+process1 = {
+    command = "cat tests/simple.cfg";
+};
+
+[H] Child 13419 done
+[H] Child 13418 done
+[H] All children done, exiting
+
+
+
+
+
